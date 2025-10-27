@@ -1,0 +1,33 @@
+# Python Dependencies for Airflow DAGs
+# 
+# These packages will be available to your DAGs if you:
+# 1. Build custom Docker image with these dependencies
+# 2. Or use extraPipPackages in Helm values
+
+# Azure providers (if using Azure services)
+apache-airflow-providers-microsoft-azure>=6.0.0
+
+# Common data processing libraries
+pandas>=2.0.0
+numpy>=1.24.0
+
+# HTTP requests
+requests>=2.31.0
+
+# Database connectors
+# psycopg2-binary>=2.9.0  # PostgreSQL
+# pymysql>=1.0.0          # MySQL
+# pyodbc>=4.0.0           # SQL Server
+
+# Data validation
+# pydantic>=2.0.0
+# great-expectations>=0.17.0
+
+# Additional providers (uncomment as needed)
+# apache-airflow-providers-amazon>=8.0.0     # AWS
+# apache-airflow-providers-google>=10.0.0    # GCP
+# apache-airflow-providers-http>=4.0.0       # HTTP
+# apache-airflow-providers-postgres>=5.0.0   # PostgreSQL
+# apache-airflow-providers-slack>=8.0.0      # Slack notifications
+# apache-airflow-providers-ssh>=3.0.0        # SSH
+

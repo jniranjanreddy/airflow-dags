@@ -1,0 +1,206 @@
+# Airflow Helm Chart Values for AKS Deployment with Git-Sync
+# This configuration enables automatic DAG synchronization from your Git repository
+
+###############################################################################
+# Git-Sync Configuration (Recommended for AKS)
+###############################################################################
+dags:
+  # Use git-sync to automatically sync DAGs from your repository
+  gitSync:
+    enabled: true
+    
+    # Your Git repository configuration
+    repo: https://github.com/YOUR_USERNAME/airflow-dags-repo.git
+    branch: main
+    rev: HEAD
+    depth: 1
+    maxFailures: 0
+    subPath: "dags"  # Path within the repo where DAGs are located
+    
+    # Sync interval (how often to check for new DAGs)
+    wait: 60  # seconds
+    
+    # For private repositories, uncomment and configure:
+    # credentialsSecret: git-credentials
+    # sshKeySecret: airflow-ssh-secret
+    
+  # Persistence for DAGs (optional, but recommended for performance)
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClassName: default  # Use Azure Disk or Azure Files
+    accessMode: ReadWriteMany  # Required for multiple pods
+
+###############################################################################
+# Airflow Configuration
+###############################################################################
+airflow:
+  # Airflow executor type
+  # Options: LocalExecutor, CeleryExecutor, KubernetesExecutor, CeleryKubernetesExecutor
+  executor: KubernetesExecutor  # Recommended for AKS
+  
+  # Airflow configuration
+  config:
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"  # Disable example DAGs
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
+    AIRFLOW__CORE__DAGS_FOLDER: "/opt/airflow/dags"
+    
+    # Kubernetes executor configuration
+    AIRFLOW__KUBERNETES__NAMESPACE: "airflow"
+    AIRFLOW__KUBERNETES__WORKER_CONTAINER_REPOSITORY: "apache/airflow"
+    AIRFLOW__KUBERNETES__WORKER_CONTAINER_TAG: "2.7.3-python3.10"
+    AIRFLOW__KUBERNETES__DELETE_WORKER_PODS: "True"
+    AIRFLOW__KUBERNETES__DELETE_WORKER_PODS_ON_FAILURE: "False"
+
+###############################################################################
+# Webserver Configuration
+###############################################################################
+webserver:
+  replicas: 1
+  
+  # Service configuration
+  service:
+    type: LoadBalancer  # For AKS with public IP
+    # Alternatively, use ClusterIP with Ingress
+    # type: ClusterIP
+    
+  # Resource limits
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+###############################################################################
+# Scheduler Configuration
+###############################################################################
+scheduler:
+  replicas: 1
+  
+  # Resource limits
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  
+  # DAG processing configuration
+  logCleanup:
+    enabled: true
+    retentionMinutes: 10080  # 7 days
+
+###############################################################################
+# Workers Configuration (for CeleryExecutor)
+###############################################################################
+workers:
+  # Only used with CeleryExecutor
+  replicas: 1
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+###############################################################################
+# PostgreSQL Database Configuration
+###############################################################################
+postgresql:
+  enabled: true  # Use built-in PostgreSQL for testing
+  
+  # For production, consider using Azure Database for PostgreSQL
+  # enabled: false
+  
+  auth:
+    username: airflow
+    password: airflow
+    database: airflow
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: default
+
+###############################################################################
+# Redis Configuration (for CeleryExecutor)
+###############################################################################
+redis:
+  enabled: false  # Not needed for KubernetesExecutor
+  
+  # Enable if using CeleryExecutor
+  # enabled: true
+  # persistence:
+  #   enabled: true
+  #   size: 5Gi
+
+###############################################################################
+# Logs Configuration
+###############################################################################
+logs:
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: default
+
+###############################################################################
+# Ingress Configuration (Optional)
+###############################################################################
+ingress:
+  enabled: false
+  
+  # Uncomment to enable Ingress with Azure Application Gateway or NGINX
+  # enabled: true
+  # web:
+  #   host: "airflow.yourdomain.com"
+  #   path: "/"
+  #   pathType: "Prefix"
+  #   annotations:
+  #     kubernetes.io/ingress.class: "nginx"
+  #     cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  #   tls:
+  #     enabled: true
+  #     secretName: airflow-tls
+
+###############################################################################
+# Monitoring and Metrics
+###############################################################################
+statsd:
+  enabled: false
+
+prometheusExporter:
+  enabled: false
+
+###############################################################################
+# Service Account
+###############################################################################
+serviceAccount:
+  create: true
+  name: airflow
+
+###############################################################################
+# Security Context
+###############################################################################
+securityContext:
+  fsGroup: 50000
+  runAsUser: 50000
+
+###############################################################################
+# Additional Configuration
+###############################################################################
+# Environment variables for all Airflow containers
+env:
+  - name: AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS
+    value: "False"
+  
+# Extra pip packages to install
+# extraPipPackages:
+#   - "apache-airflow-providers-microsoft-azure==6.0.0"
+#   - "pandas==2.0.0"
+#   - "requests==2.31.0"
+
