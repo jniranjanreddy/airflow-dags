@@ -1,65 +1,79 @@
 """
-Example Airflow DAG for testing AKS deployment
-This DAG demonstrates basic functionality and can be used to verify your deployment
+Example DAG for Testing Airflow 3.x
+This DAG demonstrates basic Airflow concepts
 """
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
+# Airflow 3.x uses providers.standard instead of operators
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 
+# Default arguments for all tasks
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2024, 1, 1),
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
 }
 
-def print_hello():
-    """Simple Python function"""
-    print("Hello from Airflow in AKS!")
-    return "Success"
-
-def print_date():
-    """Print current date"""
-    print(f"Current date and time: {datetime.now()}")
-    return datetime.now()
-
+# Define the DAG
 with DAG(
-    dag_id='example_aks_dag',
+    dag_id='example_test_dag',
     default_args=default_args,
-    description='Example DAG for AKS deployment testing',
-    schedule_interval=timedelta(days=1),
+    description='A simple example DAG for testing',
+    schedule='@daily',  # Run once a day
+    start_date=datetime(2024, 1, 1),
     catchup=False,
-    tags=['example', 'aks'],
+    tags=['example', 'test'],
 ) as dag:
-    
-    # Task 1: Bash operator
-    start_task = BashOperator(
+
+    # Task 1: Start (Empty operator - does nothing, just marks start)
+    start = EmptyOperator(
         task_id='start',
-        bash_command='echo "Starting DAG execution in AKS"',
     )
-    
-    # Task 2: Python operator
+
+    # Task 2: Print hello using Python
+    def print_hello():
+        print("Hello from Airflow!")
+        return "Hello task completed"
+
     hello_task = PythonOperator(
-        task_id='print_hello',
+        task_id='hello_python',
         python_callable=print_hello,
     )
-    
-    # Task 3: Python operator
-    date_task = PythonOperator(
-        task_id='print_date',
-        python_callable=print_date,
+
+    # Task 3: Run a bash command
+    bash_task = BashOperator(
+        task_id='bash_echo',
+        bash_command='echo "Current date: $(date)" && echo "Airflow is working!"',
     )
-    
-    # Task 4: Bash operator
-    end_task = BashOperator(
+
+    # Task 4: Another Python task that processes data
+    def process_data(**context):
+        """Simulate data processing"""
+        # Airflow 3.x uses logical_date instead of execution_date
+        logical_date = context['logical_date']
+        print(f"Processing data for: {logical_date}")
+        
+        # Simulate some work
+        data = {'records_processed': 100, 'status': 'success'}
+        print(f"Result: {data}")
+        return data
+
+    process_task = PythonOperator(
+        task_id='process_data',
+        python_callable=process_data,
+    )
+
+    # Task 5: End
+    end = EmptyOperator(
         task_id='end',
-        bash_command='echo "DAG execution completed successfully"',
     )
-    
-    # Define task dependencies
-    start_task >> hello_task >> date_task >> end_task
+
+    # Define task dependencies (execution order)
+    # start -> [hello_task, bash_task] -> process_task -> end
+    start >> [hello_task, bash_task] >> process_task >> end
 
